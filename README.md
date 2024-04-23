@@ -1,7 +1,7 @@
 ## Marroc mod manager
 
 a simple mod manager for minecraft that lets you install and download mods from modrinth all from one gui
-this project can be used by itself but is intended to be part of the PicoDulce launcher
+this project can be used by itself but is intended to be part of the [PicoDulce launcher](https://github.com/nixietab/picodulce)
 
 
 ![image](https://github.com/nixietab/marroc/assets/75538775/80445fd5-f3e0-4bec-a876-0d9789c695cf)
