@@ -1,9 +1,12 @@
 import sys
 import requests
+import json
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem, QMessageBox, QComboBox, QDialog
 from PyQt5.QtGui import QPixmap
-import os
+from PyQt5.QtCore import Qt  # Correct import statement
 
+import os
+import datetime
 
 class ModrinthSearchApp(QWidget):
     def __init__(self):
@@ -39,8 +42,8 @@ class ModrinthSearchApp(QWidget):
         api_url = f"https://api.modrinth.com/v2/search?query={mod_name}&limit=20"
         response = requests.get(api_url)
         if response.status_code == 200:
-            mods_data = response.json()['hits']
-            for mod in mods_data:
+            mods_data = json.loads(response.text)
+            for mod in mods_data['hits']:
                 mod_name = mod['title']
                 mod_description = mod['description']
                 item = QListWidgetItem(f"Title: {mod_name}\nDescription: {mod_description}")
@@ -58,7 +61,7 @@ class ModrinthSearchApp(QWidget):
                 api_url = f"https://api.modrinth.com/v2/project/{mod_slug}"
                 response = requests.get(api_url)
                 if response.status_code == 200:
-                    mod_info = response.json()
+                    mod_info = json.loads(response.text)
                     icon_url = mod_info.get('icon_url')
                     mod_versions = self.get_mod_versions(mod_slug)
                     mod_details_window = ModDetailsWindow(mod_data, icon_url, mod_versions)
@@ -74,8 +77,17 @@ class ModrinthSearchApp(QWidget):
         api_url = f"https://api.modrinth.com/v2/project/{mod_slug}/version"
         response = requests.get(api_url)
         if response.status_code == 200:
-            versions = response.json()
-            return [version['name'] for version in versions]
+            versions = json.loads(response.text)
+            mod_versions = []
+            for version in versions:
+                version_name = version['name']
+                version_files = version.get('files', [])
+                if version_files:
+                    file_urls = [file['url'] for file in version_files]
+                    mod_versions.append({'version': version_name, 'files': file_urls})
+                else:
+                    mod_versions.append({'version': version_name, 'files': []})
+            return mod_versions
         else:
             return []
 
@@ -105,7 +117,9 @@ class ModDetailsWindow(QDialog):
         layout.addWidget(icon_label)
 
         self.version_dropdown = QComboBox()
-        self.version_dropdown.addItems(mod_versions)
+        for version in mod_versions:
+            self.version_dropdown.addItem(version['version'])
+            self.version_dropdown.setItemData(self.version_dropdown.count() - 1, version['files'], Qt.UserRole)
         layout.addWidget(self.version_dropdown)
 
         self.download_button = QPushButton("Download")
@@ -131,25 +145,21 @@ class ModDetailsWindow(QDialog):
             return None
 
     def download_mod(self):
-        selected_version = self.version_dropdown.currentText()
-        mod_data = self.mod_data
-        files = mod_data.get("files")
-        if files:
-            for file in files:
-                if file.get("primary") and file.get("url").endswith('.jar'):
-                    url = file.get("url")
-                    filename = os.path.basename(url)
-                    if url:
-                        try:
-                            response = requests.get(url)
-                            response.raise_for_status()
-                            with open(filename, 'wb') as f:
-                                f.write(response.content)
-                            QMessageBox.information(self, "Download Mod", f"Downloaded {filename} successfully.")
-                            return
-                        except Exception as e:
-                            print("Error downloading mod:", e)
-                            break
+        selected_version_index = self.version_dropdown.currentIndex()
+        selected_version_files = self.version_dropdown.itemData(selected_version_index, Qt.UserRole)
+        if selected_version_files:
+            for file_url in selected_version_files:
+                filename = os.path.basename(file_url)
+                try:
+                    response = requests.get(file_url)
+                    response.raise_for_status()
+                    with open(filename, 'wb') as f:
+                        f.write(response.content)
+                    QMessageBox.information(self, "Download Mod", f"Downloaded {filename} successfully.")
+                    return
+                except requests.exceptions.RequestException as e:
+                    QMessageBox.warning(self, "Download Error", f"Error downloading mod: {e}")
+                    return
         QMessageBox.warning(self, "Download Mod", "Failed to download the mod.")
 
 if __name__ == "__main__":
