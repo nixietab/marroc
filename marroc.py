@@ -82,7 +82,7 @@ class ModrinthSearchApp(QWidget):
     def search_mods(self):
         self.mods_list.clear()
         mod_name = self.search_input.text()
-        api_url = f"https://api.modrinth.com/v2/search?query={mod_name}&limit=20"
+        api_url = f"https://api.modrinth.com/v2/search?query={mod_name}&limit=20&facets=%5B%5B%22project_type%3Amod%22%5D%5D"
         response = requests.get(api_url)
         if response.status_code == 200:
             mods_data = json.loads(response.text)
