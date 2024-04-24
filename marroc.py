@@ -13,6 +13,9 @@ class ModrinthSearchApp(QWidget):
     def __init__(self):
         super().__init__()
 
+        # Check and create folders if they don't exist
+        self.check_and_create_folders()
+
         self.setWindowTitle("Marroc Mod Manager")
         self.setGeometry(100, 100, 500, 400)
 
@@ -50,6 +53,13 @@ class ModrinthSearchApp(QWidget):
         layout.addWidget(tab_widget)
 
         self.setLayout(layout)
+
+    def check_and_create_folders(self):
+        # Check and create 'marroc/mods' and 'marroc/resourcepacks' folders if they don't exist
+        folders = ['marroc/mods', 'marroc/resourcepacks']
+        for folder in folders:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
 
     def init_search_tab(self):
         layout = QVBoxLayout()
